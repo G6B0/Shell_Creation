@@ -5,6 +5,11 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <cstring>
+#include <chrono> 
+#include <sys/resource.h>
+#include <sys/time.h>
+#include <fcntl.h> 
+#include <signal.h> 
 
 //Función que se encarga de parsear el prompt del usuario para
 //poder recibir multiples argumentos
@@ -40,6 +45,89 @@ std::vector<std::string> dividir_comandos(const std::string &prompt){
     return comandos;
 }
 
+// función para ejecutar miprof, 
+void ejecutar_miprof(const std::vector<std::string>& args_miprof) { 
+    auto argumentos=parsear_input(args_miprof[0]); 
+
+    //variables para guardar tiempo real
+    std::chrono::high_resolution_clock::time_point inicio_real, fin_real;
+    //
+    //getrusage();
+    
+    std::string nombre_archivo; // archivo para guardar resultados
+    std::string comando; // almacenará ejec, ejecsave, etc
+    int maxtiempo=0;
+
+    //para los escenarios al usar miprof (ejecsave y ejecutar)
+    if (argumentos[1]!=nullptr){
+        comando=argumentos[1]; // ejec, ejecsave, ejecutar
+
+        // ejecsave: tiene un argumento extra para el nombre de archivo
+        if (comando == "ejecsave") {
+            if (argumentos[2] != nullptr) {
+                nombre_archivo = argumentos[2];
+            } else {
+                std::cerr << "Error! ejecsave requiere un nombre de archivo" << std::endl;
+                for (auto arg : argumentos) delete[] arg;
+                return;
+            }
+        } 
+        else if (comando == "ejecutar") {
+
+            // ejecutar: argumento extra, el cual es numérico
+            if (argumentos[2] != nullptr && std::strcmp(argumentos[2], "maxtiempo") == 0) {
+                if (argumentos[2] != nullptr) {
+                    maxtiempo = std::atoi(argumentos[2]); // tiempo máximo para usarlo más adelante
+                } else {
+                    std::cerr << "Error: maxtiempo requiere valor numérico" << std::endl;
+                    for (auto arg : argumentos) delete[] arg;
+                    return;
+                }
+            }
+        }
+        //en el caso que no sea ninguna de las 3 opciones
+        else if (comando != "ejec") {
+            std::cerr << "Error: modo no reconocido: " << comando << std::endl;
+            for (auto arg : argumentos) delete[] arg;
+            return;
+        }
+    }
+    
+
+    inicio_real=std::chrono::high_resolution_clock::now();
+    pid_t pid = fork();
+    if(pid==0){
+        execvp(argumentos[1], argumentos.data()+1);
+        perror("execvp");
+        exit(1);
+    } else if (pid>0){
+        int estado_hijo;
+        
+        // implementar maxtiempo
+
+        //esperar hasta que el proceso hijo termine
+        waitpid(pid, &estado_hijo, 0);
+
+        //medicion de tiempos
+        fin_real=std::chrono::high_resolution_clock::now();
+        //getusage
+
+        auto tiempo_real = std::chrono::duration_cast<std::chrono::milliseconds>(fin_real - inicio_real);
+        // faltan los otros tiempos
+
+        std::cout << "\n Resultados de myprof " << std::endl;
+        std::cout << "miprof " << comando[1];
+        if(!nombre_archivo.empty()) std::cout << " archivo: " << nombre_archivo << std::endl;
+
+        std::cout << "Tiempo real: "<< tiempo_real.count() << " ms" << std::endl;
+
+        // esos resultados hay que guardarlos
+
+    } else {
+        perror("fork");
+    }
+    for (auto args:argumentos) delete[] args;
+}
 
 int main()
 {
@@ -53,6 +141,19 @@ int main()
         //Se identifica los comandos a usar en el prompt y cuantos son
         auto comandos = dividir_comandos(prompt);
         int n = comandos.size();
+        //Identificamos comando myprof, si n=1 y argumentos posibles :
+        // "miprof", "ejec" o "ejecsave"+"archivo", "comando" y "args"
+        if (n==1) {
+            auto argumentos=parsear_input(comandos[0]);
+            //vemos que el token sea "myprof"
+            if(argumentos[0]!=nullptr && std::strcmp(argumentos[0],"miprof")==0){
+                ejecutar_miprof(comandos); 
+                for (auto args:argumentos) delete[] args; // liberamos memoria del parseo
+                continue;
+            }
+            // si no, podemos liberar memoria y continuar
+            for (auto args:argumentos) delete[] args;
+        }
 
         //Creación de pipes
 
