@@ -51,6 +51,7 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
 
     //variables para guardar tiempo real
     std::chrono::high_resolution_clock::time_point inicio_real, fin_real;
+    struct rusage usage;
     //
     //getrusage();
     
@@ -73,7 +74,6 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
             }
         } 
         else if (comando == "ejecutar") {
-
             // ejecutar: argumento extra, el cual es numérico
             if (argumentos[2] != nullptr && std::strcmp(argumentos[2], "maxtiempo") == 0) {
                 if (argumentos[2] != nullptr) {
@@ -111,15 +111,23 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
         //medicion de tiempos
         fin_real=std::chrono::high_resolution_clock::now();
         //getusage
-
+        getrusage(RUSAGE_CHILDREN, &usage);
+ 
         auto tiempo_real = std::chrono::duration_cast<std::chrono::milliseconds>(fin_real - inicio_real);
-        // faltan los otros tiempos
+        double tiempo_usuario = (usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6) * 1000;     //(tv_sec = parte entera de los segundos) (tv_usec = parte fraccionaria en microsegundos)
+        double tiempo_sistema = (usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6) * 1000;     // se divide y multiplica para ajustar la unidad de medida a milisegundos
 
-        std::cout << "\n Resultados de myprof " << std::endl;
-        std::cout << "miprof " << comando[1];
-        if(!nombre_archivo.empty()) std::cout << " archivo: " << nombre_archivo << std::endl;
+        std::cout << "\nResultados de miprof \n" << std::endl;
+        std::cout << "Comando ejecutado: " << comando << std::endl;
+        if(!nombre_archivo.empty()) std::cout << " Archivo: " << nombre_archivo << std::endl;
 
-        std::cout << "Tiempo real: "<< tiempo_real.count() << " ms" << std::endl;
+        std::cout << "-Tiempo real: "<< tiempo_real.count() << " ms" << std::endl;
+        std::cout << "-Tiempo usuario: " << tiempo_usuario << " ms" << std::endl;
+        std::cout << "-Tiempo sistema: " << tiempo_sistema << " ms" << std::endl;
+
+        //maximum resident set
+        long max_resident_set = usage.ru_maxrss;
+        std::cout << "-Max resident set: " << max_resident_set << " KB" << std::endl;
 
         // esos resultados hay que guardarlos
 
