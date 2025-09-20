@@ -97,7 +97,13 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
     inicio_real=std::chrono::high_resolution_clock::now();
     pid_t pid = fork();
     if(pid==0){
-        execvp(argumentos[1], argumentos.data()+1);
+        if (comando == "ejec") {
+            execvp(argumentos[2], argumentos.data()+2);
+        } else if (comando == "ejecsave") {
+            execvp(argumentos[3], argumentos.data()+3);
+        } else if (comando == "ejecutar") {
+            execvp(argumentos[3], argumentos.data()+3);  // o el índice apropiado
+        }
         perror("execvp");
         exit(1);
     } else if (pid>0){
