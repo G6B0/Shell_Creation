@@ -32,5 +32,6 @@
 *.app
 
 # Ignorar los archivos grandes
+50mb.txt
 200mb.txt
 500mb.txt
