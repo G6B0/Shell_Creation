@@ -2,26 +2,26 @@
 
 ===== Resultados de miprof =====
 Comando: ejecsave resultados.txt sort 50mb.txt 
--Tiempo real: 1574 ms
--Tiempo usuario: 1165.59 ms
--Tiempo sistema: 831.993 ms
--Max resident set: 139392 KB
+-Tiempo real: 7544 ms
+-Tiempo usuario: 1868.24 ms
+-Tiempo sistema: 1166.78 ms
+-Max resident set: 187136 KB
 ===============================
 
 
 ===== Resultados de miprof =====
 Comando: ejecsave resultados.txt sort 200mb.txt 
--Tiempo real: 6521 ms
--Tiempo usuario: 5654.38 ms
--Tiempo sistema: 3239.35 ms
--Max resident set: 547968 KB
+-Tiempo real: 40923 ms
+-Tiempo usuario: 21418.6 ms
+-Tiempo sistema: 10762.5 ms
+-Max resident set: 1203072 KB
 ===============================
 
 
 ===== Resultados de miprof =====
 Comando: ejecsave resultados.txt sort 500mb.txt 
--Tiempo real: 6764 ms
--Tiempo usuario: 5847.36 ms
--Tiempo sistema: 3328 ms
--Max resident set: 548096 KB
+-Tiempo real: 108252 ms
+-Tiempo usuario: 31888.7 ms
+-Tiempo sistema: 19030.4 ms
+-Max resident set: 1843968 KB
 ===============================
