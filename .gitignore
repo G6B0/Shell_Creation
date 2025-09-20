@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Ignorar los archivos grandes
+200mb.txt
+500mb.txt
