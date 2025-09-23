@@ -40,7 +40,7 @@ std::vector<std::string> dividir_comandos(const std::string &prompt){
         //Quitamos espacios al inicio
         while (!cmd.empty() && cmd.front() == ' ') cmd.erase(cmd.begin());
         //Quitamos espacios al final
-        while (!cmd.empty() && cmd.back() == ' ') cmd.erase(cmd.begin());
+        while (!cmd.empty() && cmd.back() == ' ') cmd.pop_back();
         comandos.push_back(cmd);
     }
     return comandos;
@@ -166,7 +166,7 @@ int main()
         }
         //Creación de procesos conectados por pipes
         for (int i = 0; i < n; i++){
-            auto args = parsear_input(prompt);
+            auto args = parsear_input(comandos[i]);
             pid_t pid = fork();
             if (pid == 0){
                 //Proceso Hijo
