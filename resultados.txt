@@ -1,0 +1,54 @@
+
+
+===== Resultados de miprof =====
+Comando: ejecsave resultados.txt sort 50mb.txt 
+-Tiempo real: 7544 ms
+-Tiempo usuario: 1868.24 ms
+-Tiempo sistema: 1166.78 ms
+-Max resident set: 187136 KB
+===============================
+
+
+===== Resultados de miprof =====
+Comando: ejecsave resultados.txt sort 200mb.txt 
+-Tiempo real: 40923 ms
+-Tiempo usuario: 21418.6 ms
+-Tiempo sistema: 10762.5 ms
+-Max resident set: 1203072 KB
+===============================
+
+
+===== Resultados de miprof =====
+Comando: ejecsave resultados.txt sort 500mb.txt 
+-Tiempo real: 108252 ms
+-Tiempo usuario: 31888.7 ms
+-Tiempo sistema: 19030.4 ms
+-Max resident set: 1843968 KB
+===============================
+
+
+===== Resultados de miprof =====
+Comando: ejecsave resultados.txt sort -n 200mb.txt 
+-Tiempo real: 41565 ms
+-Tiempo usuario: 22581.9 ms
+-Tiempo sistema: 9910.48 ms
+-Max resident set: 1843968 KB
+===============================
+
+
+===== Resultados de miprof =====
+Comando: ejecsave resultados.txt sort -r 200mb.txt 
+-Tiempo real: 44684 ms
+-Tiempo usuario: 22193.5 ms
+-Tiempo sistema: 11398.4 ms
+-Max resident set: 1843968 KB
+===============================
+
+
+===== Resultados de miprof =====
+Comando: ejecsave resultados.txt sort -u 200mb.txt 
+-Tiempo real: 38756 ms
+-Tiempo usuario: 21687.3 ms
+-Tiempo sistema: 10469.1 ms
+-Max resident set: 1843968 KB
+===============================
