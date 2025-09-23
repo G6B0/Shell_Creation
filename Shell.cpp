@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <fcntl.h> 
 #include <signal.h> 
+#include <fstream> 
 
 //Función que se encarga de parsear el prompt del usuario para
 //poder recibir multiples argumentos
@@ -73,7 +74,6 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
             }
         } 
         else if (comando == "ejecutar") {
-
             // ejecutar: argumento extra, el cual es numérico
             if (argumentos[2] != nullptr && std::strcmp(argumentos[2], "maxtiempo") == 0) {
                 if (argumentos[2] != nullptr) {
