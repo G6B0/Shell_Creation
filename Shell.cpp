@@ -52,8 +52,8 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
 
     //variables para guardar tiempo real
     std::chrono::high_resolution_clock::time_point inicio_real, fin_real;
-    //
-    //getrusage();
+    struct rusage usage_before, usage_after;
+    getrusage(RUSAGE_CHILDREN, &usage_before); // guardamos el estado antes del hijo
     
     std::string nombre_archivo; // archivo para guardar resultados
     std::string comando; // almacenará ejec, ejecsave, etc
@@ -97,7 +97,13 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
     inicio_real=std::chrono::high_resolution_clock::now();
     pid_t pid = fork();
     if(pid==0){
-        execvp(argumentos[1], argumentos.data()+1);
+        if (comando == "ejec") {
+            execvp(argumentos[2], argumentos.data()+2);
+        } else if (comando == "ejecsave") {
+            execvp(argumentos[3], argumentos.data()+3);
+        } else if (comando == "ejecutar") {
+            execvp(argumentos[4], argumentos.data()+4);
+        }
         perror("execvp");
         exit(1);
     } else if (pid>0){
@@ -111,17 +117,54 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
         //medicion de tiempos
         fin_real=std::chrono::high_resolution_clock::now();
         //getusage
-
+        getrusage(RUSAGE_CHILDREN, &usage_after);
+ 
         auto tiempo_real = std::chrono::duration_cast<std::chrono::milliseconds>(fin_real - inicio_real);
-        // faltan los otros tiempos
+        // restamos los tiempos para obtener solo lo del comando
+        double tiempo_usuario = ((usage_after.ru_utime.tv_sec - usage_before.ru_utime.tv_sec) + (usage_after.ru_utime.tv_usec - usage_before.ru_utime.tv_usec)/1e6) * 1000;     //(tv_sec = parte entera de los segundos) (tv_usec = parte fraccionaria en microsegundos)
+        double tiempo_sistema = ((usage_after.ru_stime.tv_sec - usage_before.ru_stime.tv_sec) + (usage_after.ru_stime.tv_usec - usage_before.ru_stime.tv_usec)/1e6) * 1000;     // se divide y multiplica para ajustar la unidad de medida a milisegundos
 
-        std::cout << "\n Resultados de myprof " << std::endl;
-        std::cout << "miprof " << comando[1];
-        if(!nombre_archivo.empty()) std::cout << " archivo: " << nombre_archivo << std::endl;
+        //maximum resident set
+        long max_resident_set = usage_after.ru_maxrss;
 
-        std::cout << "Tiempo real: "<< tiempo_real.count() << " ms" << std::endl;
+        //Se imprimen los resultados
+        std::cout << "\n===== Resultados de miprof ===== \n" << std::endl;
+        std::cout << "Comando ejecutado: ";
+        if (comando == "ejecsave") {
+            for (int i = 3; argumentos[i] != nullptr; i++) {
+                std::cout << argumentos[i] << " ";
+            }
+        } else if (comando == "ejec") {
+            for (int i = 2; argumentos[i] != nullptr; i++) {
+                std::cout << argumentos[i] << " ";
+            }
+        }
+        std::cout << std::endl;
 
-        // esos resultados hay que guardarlos
+        if(!nombre_archivo.empty()) std::cout << "Archivo: " << nombre_archivo << std::endl;
+        std::cout << "-Tiempo real: "<< tiempo_real.count() << " ms" << std::endl;
+        std::cout << "-Tiempo usuario: " << tiempo_usuario << " ms" << std::endl;
+        std::cout << "-Tiempo sistema: " << tiempo_sistema << " ms" << std::endl;
+        std::cout << "-Max resident set: " << max_resident_set << " KB" << std::endl;
+
+        // En el caso de que se ejecute "ejecsave" se deben guardar los resultados en un archivo
+        if(comando == "ejecsave" && !nombre_archivo.empty()){
+            std::ofstream out(nombre_archivo, std::ios::app); // crea si no existe, agrega si existe
+            if(out){
+                out << "\n\n===== Resultados de miprof =====\n";
+                out << "Comando: ";
+                for(int i = 1; argumentos[i] != nullptr; ++i)
+                    out << argumentos[i] << " ";
+                out << "\n";
+                out << "-Tiempo real: " << tiempo_real.count() << " ms\n";
+                out << "-Tiempo usuario: " << tiempo_usuario << " ms\n";
+                out << "-Tiempo sistema: " << tiempo_sistema << " ms\n";
+                out << "-Max resident set: " << max_resident_set << " KB\n";
+                out << "===============================\n";
+            } else {
+                std::cerr << "Error al abrir el archivo " << nombre_archivo << std::endl;
+            }
+        }
 
     } else {
         perror("fork");
