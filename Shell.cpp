@@ -58,15 +58,17 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
     std::string nombre_archivo; // archivo para guardar resultados
     std::string comando; // almacenará ejec, ejecsave, etc
     int maxtiempo=0;
-
+    std::vector<std::string> comando_pipe;
     //para los escenarios al usar miprof (ejecsave y ejecutar)
     if (argumentos[1]!=nullptr){
         comando=argumentos[1]; // ejec, ejecsave, ejecutar
-
         // ejecsave: tiene un argumento extra para el nombre de archivo
         if (comando == "ejecsave") {
             if (argumentos[2] != nullptr) {
                 nombre_archivo = argumentos[2];
+                for(int i = 3; argumentos[i]!=nullptr; i++){
+                    comando_pipe.push_back(argumentos[i]);
+                }
             } else {
                 std::cerr << "Error! ejecsave requiere un nombre de archivo" << std::endl;
                 for (auto arg : argumentos) delete[] arg;
@@ -75,99 +77,158 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
         } 
         else if (comando == "ejecutar") {
             // ejecutar: argumento extra, el cual es numérico
-            if (argumentos[2] != nullptr && std::strcmp(argumentos[2], "maxtiempo") == 0) {
-                if (argumentos[2] != nullptr) {
-                    maxtiempo = std::atoi(argumentos[2]); // tiempo máximo para usarlo más adelante
-                } else {
-                    std::cerr << "Error: maxtiempo requiere valor numérico" << std::endl;
-                    for (auto arg : argumentos) delete[] arg;
-                    return;
-                }
+            if (argumentos[2] == nullptr || std::strcmp(argumentos[2], "maxtiempo") != 0) {
+                std::cerr << "Error: 'ejecutar' requiere 'maxtiempo' seguido de un valor numerico" << std::endl;
+                for (auto arg : argumentos) delete[] arg;
+                return;
+            }
+            if (argumentos[3] == nullptr){
+                std::cerr << "Error: maxtiempo requiere valor numérico" << std::endl;
+                for (auto arg : argumentos) delete[] arg;
+                return;
+            }
+            maxtiempo = std::atoi(argumentos[3]);
+
+            for(int i = 4; argumentos[i]!=nullptr; i++){
+                comando_pipe.push_back(argumentos[i]);
             }
         }
         //en el caso que no sea ninguna de las 3 opciones
-        else if (comando != "ejec") {
+        else if (comando == "ejec") {
+            if(argumentos[2] != nullptr){
+                for(int i = 2; argumentos[i]!=nullptr; i++){
+                    comando_pipe.push_back(argumentos[i]);
+                }
+            }
+            else{
+                std::cerr << "Error: modo no reconocido: " << comando << std::endl;
+                for (auto arg : argumentos) delete[] arg;
+                return;
+            }
+        }
+        else{
             std::cerr << "Error: modo no reconocido: " << comando << std::endl;
             for (auto arg : argumentos) delete[] arg;
             return;
         }
     }
-    
 
+    std::string prompt_pipe;
+    for(size_t i = 0; i < comando_pipe.size(); i++){
+        if(i > 0){
+            prompt_pipe += " ";
+        }
+        prompt_pipe += comando_pipe[i];
+    }
+
+    auto comandos = dividir_comandos(prompt_pipe);
+    int n = comandos.size();
     inicio_real=std::chrono::high_resolution_clock::now();
-    pid_t pid = fork();
-    if(pid==0){
-        if (comando == "ejec") {
-            execvp(argumentos[2], argumentos.data()+2);
-        } else if (comando == "ejecsave") {
-            execvp(argumentos[3], argumentos.data()+3);
-        } else if (comando == "ejecutar") {
-            execvp(argumentos[4], argumentos.data()+4);
-        }
-        perror("execvp");
-        exit(1);
-    } else if (pid>0){
-        int estado_hijo;
-        
-        // implementar maxtiempo
-
-        //esperar hasta que el proceso hijo termine
-        waitpid(pid, &estado_hijo, 0);
-
-        //medicion de tiempos
-        fin_real=std::chrono::high_resolution_clock::now();
-        //getusage
-        getrusage(RUSAGE_CHILDREN, &usage_after);
- 
-        auto tiempo_real = std::chrono::duration_cast<std::chrono::milliseconds>(fin_real - inicio_real);
-        // restamos los tiempos para obtener solo lo del comando
-        double tiempo_usuario = ((usage_after.ru_utime.tv_sec - usage_before.ru_utime.tv_sec) + (usage_after.ru_utime.tv_usec - usage_before.ru_utime.tv_usec)/1e6) * 1000;     //(tv_sec = parte entera de los segundos) (tv_usec = parte fraccionaria en microsegundos)
-        double tiempo_sistema = ((usage_after.ru_stime.tv_sec - usage_before.ru_stime.tv_sec) + (usage_after.ru_stime.tv_usec - usage_before.ru_stime.tv_usec)/1e6) * 1000;     // se divide y multiplica para ajustar la unidad de medida a milisegundos
-
-        //maximum resident set
-        long max_resident_set = usage_after.ru_maxrss;
-
-        //Se imprimen los resultados
-        std::cout << "\n===== Resultados de miprof ===== \n" << std::endl;
-        std::cout << "Comando ejecutado: ";
-        if (comando == "ejecsave") {
-            for (int i = 3; argumentos[i] != nullptr; i++) {
-                std::cout << argumentos[i] << " ";
+    
+    if(n == 1){
+        //No hay pipes
+        pid_t pid = fork();
+        if(pid==0){
+            std::vector<char*> args;
+            for(auto& s: comando_pipe){
+                args.push_back(const_cast<char*>(s.c_str()));
             }
-        } else if (comando == "ejec") {
-            for (int i = 2; argumentos[i] != nullptr; i++) {
-                std::cout << argumentos[i] << " ";
+            args.push_back(nullptr);
+            execvp(args[0], args.data());
+            perror("execvp");
+            exit(1);
+        }
+        waitpid(pid, nullptr, 0);
+    }
+    else{
+        //Si hay pipes
+        std::vector<int[2]> pipes(n-1);
+        for(int i = 0; i < n-1; i++){
+            pipe(pipes[i]);
+        }
+        for(int i = 0; i < n; i++){
+            pid_t pid = fork();
+            if(pid==0){
+                if(i > 0){
+                    dup2(pipes[i-1][0], STDIN_FILENO);
+                }
+                if(i < n-1){
+                    dup2(pipes[i][1], STDOUT_FILENO);
+                }
+                for(int j = 0; j < n-1; j++){
+                    close(pipes[j][0]);
+                    close(pipes[j][1]);
+                }
+                auto args = parsear_input(comandos[i]);
+                execvp(args[0], args.data());
+                perror("execvp");
+                exit(1);
             }
         }
-        std::cout << std::endl;
-
-        if(!nombre_archivo.empty()) std::cout << "Archivo: " << nombre_archivo << std::endl;
-        std::cout << "-Tiempo real: "<< tiempo_real.count() << " ms" << std::endl;
-        std::cout << "-Tiempo usuario: " << tiempo_usuario << " ms" << std::endl;
-        std::cout << "-Tiempo sistema: " << tiempo_sistema << " ms" << std::endl;
-        std::cout << "-Max resident set: " << max_resident_set << " KB" << std::endl;
-
-        // En el caso de que se ejecute "ejecsave" se deben guardar los resultados en un archivo
-        if(comando == "ejecsave" && !nombre_archivo.empty()){
-            std::ofstream out(nombre_archivo, std::ios::app); // crea si no existe, agrega si existe
-            if(out){
-                out << "\n\n===== Resultados de miprof =====\n";
-                out << "Comando: ";
-                for(int i = 1; argumentos[i] != nullptr; ++i)
-                    out << argumentos[i] << " ";
-                out << "\n";
-                out << "-Tiempo real: " << tiempo_real.count() << " ms\n";
-                out << "-Tiempo usuario: " << tiempo_usuario << " ms\n";
-                out << "-Tiempo sistema: " << tiempo_sistema << " ms\n";
-                out << "-Max resident set: " << max_resident_set << " KB\n";
-                out << "===============================\n";
-            } else {
-                std::cerr << "Error al abrir el archivo " << nombre_archivo << std::endl;
-            }
+        for(int i = 0; i < n-1; i++){
+        close(pipes[i][0]);
+        close(pipes[i][1]);
         }
+        for(int i = 0; i < n; i++){
+            wait(nullptr);
+        }
+    }
 
-    } else {
-        perror("fork");
+    //medicion de tiempos
+    fin_real=std::chrono::high_resolution_clock::now();
+    //getusage
+    getrusage(RUSAGE_CHILDREN, &usage_after);
+
+    auto tiempo_real = std::chrono::duration_cast<std::chrono::milliseconds>(fin_real - inicio_real);
+    // restamos los tiempos para obtener solo lo del comando
+    double tiempo_usuario = ((usage_after.ru_utime.tv_sec - usage_before.ru_utime.tv_sec) + (usage_after.ru_utime.tv_usec - usage_before.ru_utime.tv_usec)/1e6) * 1000;     //(tv_sec = parte entera de los segundos) (tv_usec = parte fraccionaria en microsegundos)
+    double tiempo_sistema = ((usage_after.ru_stime.tv_sec - usage_before.ru_stime.tv_sec) + (usage_after.ru_stime.tv_usec - usage_before.ru_stime.tv_usec)/1e6) * 1000;     // se divide y multiplica para ajustar la unidad de medida a milisegundos
+
+    //maximum resident set
+    long max_resident_set = usage_after.ru_maxrss;
+
+    //Se imprimen los resultados
+    std::cout << "\n===== Resultados de miprof ===== \n" << std::endl;
+    std::cout << "Comando ejecutado: ";
+    if (comando == "ejecsave") {
+        for (int i = 3; argumentos[i] != nullptr; i++) {
+            std::cout << argumentos[i] << " ";
+        }
+    } else if (comando == "ejec") {
+        for (int i = 2; argumentos[i] != nullptr; i++) {
+            std::cout << argumentos[i] << " ";
+        }
+    } else if (comando == "ejecutar") {
+        for (int i = 4; argumentos[i] != nullptr; i++){
+            std::cout << argumentos[i] << " ";
+        }
+    }
+
+    std::cout << std::endl;
+
+    if(!nombre_archivo.empty()) std::cout << "Archivo: " << nombre_archivo << std::endl;
+    std::cout << "-Tiempo real: "<< tiempo_real.count() << " ms" << std::endl;
+    std::cout << "-Tiempo usuario: " << tiempo_usuario << " ms" << std::endl;
+    std::cout << "-Tiempo sistema: " << tiempo_sistema << " ms" << std::endl;
+    std::cout << "-Max resident set: " << max_resident_set << " KB" << std::endl;
+
+    // En el caso de que se ejecute "ejecsave" se deben guardar los resultados en un archivo
+    if(comando == "ejecsave" && !nombre_archivo.empty()){
+        std::ofstream out(nombre_archivo, std::ios::app); // crea si no existe, agrega si existe
+        if(out){
+            out << "\n\n===== Resultados de miprof =====\n";
+            out << "Comando: ";
+            for(int i = 1; argumentos[i] != nullptr; ++i)
+                out << argumentos[i] << " ";
+            out << "\n";
+            out << "-Tiempo real: " << tiempo_real.count() << " ms\n";
+            out << "-Tiempo usuario: " << tiempo_usuario << " ms\n";
+            out << "-Tiempo sistema: " << tiempo_sistema << " ms\n";
+            out << "-Max resident set: " << max_resident_set << " KB\n";
+            out << "===============================\n";
+        } else {
+            std::cerr << "Error al abrir el archivo " << nombre_archivo << std::endl;
+        }
     }
     for (auto args:argumentos) delete[] args;
 }
@@ -184,18 +245,15 @@ int main()
         //Se identifica los comandos a usar en el prompt y cuantos son
         auto comandos = dividir_comandos(prompt);
         int n = comandos.size();
-        //Identificamos comando myprof, si n=1 y argumentos posibles :
+        //Identificamos si el primer comando es miprof y argumentos posibles :
         // "miprof", "ejec" o "ejecsave"+"archivo", "comando" y "args"
-        if (n==1) {
-            auto argumentos=parsear_input(comandos[0]);
-            //vemos que el token sea "myprof"
-            if(argumentos[0]!=nullptr && std::strcmp(argumentos[0],"miprof")==0){
-                ejecutar_miprof(comandos); 
-                for (auto args:argumentos) delete[] args; // liberamos memoria del parseo
-                continue;
+        auto argumentos = parsear_input(comandos[0]);
+        if(argumentos[0]!=nullptr && std::strcmp(argumentos[0], "miprof") ==0){
+            ejecutar_miprof(comandos);
+            for(auto arg: argumentos){
+                delete[] arg;
             }
-            // si no, podemos liberar memoria y continuar
-            for (auto args:argumentos) delete[] args;
+            continue;
         }
 
         //Creación de pipes
