@@ -12,9 +12,12 @@
 #include <signal.h> 
 #include <fstream> 
 
+//Variables para manejo de que evento "matar" por un timeout
+static pid_t child_pid = 0;
+static bool timeout_occurred = false;
+
 //Función que se encarga de parsear el prompt del usuario para
 //poder recibir multiples argumentos
-
 std::vector<char*> parsear_input(const std::string &prompt){
     std::istringstream iss(prompt); //Tokeniza la entrada
     std::string token; //Almacena los token por palabras
@@ -44,6 +47,14 @@ std::vector<std::string> dividir_comandos(const std::string &prompt){
         comandos.push_back(cmd);
     }
     return comandos;
+}
+
+//funcion para matar a un proceso hijo cuando existe señal timeout
+void timeout_handler(int sig) {
+    if (child_pid > 0) {
+        kill(child_pid, SIGTERM);
+        timeout_occurred = true;
+    }
 }
 
 // función para ejecutar miprof, 
@@ -125,22 +136,39 @@ void ejecutar_miprof(const std::vector<std::string>& args_miprof) {
     int n = comandos.size();
     inicio_real=std::chrono::high_resolution_clock::now();
     
-    if(n == 1){
-        //No hay pipes
-        pid_t pid = fork();
-        if(pid==0){
-            std::vector<char*> args;
-            for(auto& s: comando_pipe){
-                args.push_back(const_cast<char*>(s.c_str()));
-            }
-            args.push_back(nullptr);
-            execvp(args[0], args.data());
-            perror("execvp");
-            exit(1);
+if(n == 1){
+    //No hay pipes
+    pid_t pid = fork();
+    if(pid==0){
+        std::vector<char*> args;
+        for(auto& s: comando_pipe){
+            args.push_back(const_cast<char*>(s.c_str()));
         }
-        waitpid(pid, nullptr, 0);
+        args.push_back(nullptr);
+        execvp(args[0], args.data());
+        perror("execvp");
+        exit(1);
     }
-    else{
+    
+    // Si es comando "ejecutar", configurar timeout
+    if(comando == "ejecutar" && maxtiempo > 0) {
+        child_pid = pid;
+        timeout_occurred = false;
+        signal(SIGALRM, timeout_handler);
+        alarm(maxtiempo / 1000); // convertir ms a segundos
+    }
+    
+    int status;
+    waitpid(pid, &status, 0);
+    
+    if(comando == "ejecutar" && maxtiempo > 0) {
+        alarm(0); // cancelar alarma
+        if(timeout_occurred) {
+            std::cout << "\n¡Proceso terminado por timeout!\n";
+        }
+    }
+}
+    else{ 
         //Si hay pipes
         std::vector<int[2]> pipes(n-1);
         for(int i = 0; i < n-1; i++){
