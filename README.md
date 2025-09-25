@@ -13,40 +13,41 @@ Para poder compilar se requiere de:
 g++ Shell.cpp -o Shell  
 ./Shell
 ```
-![Visualización de cómo usar mishell:$](Shell_Creation/Imagenes_README/Compilar_Ejecutar.png)
+![Visualización de cómo usar mishell:$](Imagenes_README/Compilar_Ejecutar.png)
 
 ## Sintaxis para uso de mishell:$ 
 ```mishell:$ COMANDO (argumentos) | COMANDO (argumento) | ...```
 
 ## Sintaxis comando miprof 
 ```mishell:$ miprof OPCIÓN (argumentos) COMANDO (argumentos)```
-  Información que entrega:
-    - Tiempo real: tiempo total de ejecución 
-    - Tiempo de usuario: tiempo CPU en modo usuario
-    - Tiempo sistema: tiempo CPU en modo kernel
-    - Max Resident Set: memoria RAM máxima usada en KB
+
+Información que entrega:
+  - Tiempo real: tiempo total de ejecución 
+  - Tiempo de usuario: tiempo CPU en modo usuario 
+  - Tiempo sistema: tiempo CPU en modo kernel 
+  - Max Resident Set: memoria RAM máxima usada en KB 
 
 ## Ejemplo
 ### Comando sin y con pipes 
 
 ```mishell:$ ls -la```
 
-![Uso de comando básico](Shell_Creation/Imagenes_README/mishell_sin_pipes.png)
+![Uso de comando básico](Imagenes_README/mishell_sin_pipes.png)
 
 ```mishell:$ ps -aux | sort -nr -k 4 | head -20```
 
-![Uso de comando con pipes]((Shell_Creation/Imagenes_README/mishell_con_pipes.png)
+![Uso de comando con pipes](Imagenes_README/mishell_con_pipes.png)
 
 ### Comandos de miprof
 1. ejec: 
 ```mishell:$ miprof ejec sort archivo.txt```
-![Uso de miprof con ejec](Shell_Creation/Imagenes_README/miprof_ejec.png)
+![Uso de miprof con ejec](Imagenes_README/miprof_ejec.png)
 2. ejecsave: 
 ```mishell:$ miprof ejecsave resultados.txt sort archivo.txt```
-![Uso de miprof con ejecsave para guardar resultados](Shell_Creation/Imagenes_README/miprof_ejecsave.png)
-3. ejecutación con máximo de tiempo: 
+![Uso de miprof con ejecsave para guardar resultados](Imagenes_README/miprof_ejecsave.png)
+3. ejecución con máximo de tiempo: 
 ```mishell:$ miprof ejecutar maxtiempo 2 sleep 4```
-![Uso de miprof y comando con tiempo máximo de ejecución](Shell_Creation/Imagenes_README/miprof_maxtiempo.png)
+![Uso de miprof y comando con tiempo máximo de ejecución](Imagenes_README/miprof_maxtiempo.png)
 
 
 
